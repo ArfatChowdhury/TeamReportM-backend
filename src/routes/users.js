@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
+const admin = require('../config/firebase');
 const { protect } = require('../middleware/auth');
 const { authorize } = require('../middleware/role');
 
@@ -22,7 +23,7 @@ router.get('/', async (req, res) => {
 // @desc    Create a new user
 // @route   POST /api/users
 router.post('/', async (req, res) => {
-  const { name, email, firebaseUid, role, assignedLeader } = req.body;
+  const { name, email, password, role, assignedLeader } = req.body;
 
   try {
     const userExists = await User.findOne({ email });
@@ -31,12 +32,20 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ message: 'User already exists' });
     }
 
+    // 1. Create user in Firebase Auth via Admin SDK
+    const firebaseUser = await admin.auth().createUser({
+      email,
+      password,
+      displayName: name,
+    });
+
+    // 2. Create user in MongoDB
     const user = await User.create({
       name,
       email,
-      firebaseUid,
+      firebaseUid: firebaseUser.uid,
       role,
-      assignedLeader
+      assignedLeader: assignedLeader || null
     });
 
     if (assignedLeader) {
