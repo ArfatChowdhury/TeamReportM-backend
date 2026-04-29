@@ -1,0 +1,19 @@
+# Dependency directories
+node_modules/
+
+# Environment variables
+.env
+
+# Firebase service account key
+serviceAccountKey.json
+
+# User-specific documentation/instructions folder
+per/
+
+# IDE files
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
