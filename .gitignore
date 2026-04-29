@@ -8,7 +8,7 @@ node_modules/
 serviceAccountKey.json
 
 # User-specific documentation/instructions folder
-per/
+/per/
 
 # IDE files
 .vscode/
