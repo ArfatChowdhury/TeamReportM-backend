@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const axios = require('axios');
 const Report = require('../models/Report');
 const Task = require('../models/Task');
 const { protect } = require('../middleware/auth');
@@ -201,6 +202,48 @@ router.post('/email-report', async (req, res) => {
     } catch (error) {
         console.error('Email Error:', error);
         res.status(500).json({ message: 'Failed to send email report' });
+    }
+});
+
+// @desc    Proxy an external image to prevent SSRF and tracking
+// @route   GET /api/reports/proxy-image
+router.get('/proxy-image', async (req, res) => {
+    const imageUrl = req.query.url;
+    
+    if (!imageUrl) {
+        return res.status(400).send('Image URL is required');
+    }
+
+    try {
+        const parsedUrl = new URL(imageUrl);
+        const hostname = parsedUrl.hostname.toLowerCase();
+
+        // Basic SSRF Protection: Block local and internal IPs
+        const isInternal = 
+            hostname === 'localhost' ||
+            hostname === '127.0.0.1' ||
+            hostname.startsWith('10.') ||
+            hostname.startsWith('192.168.') ||
+            hostname.match(/^172\.(1[6-9]|2[0-9]|3[0-1])\./) ||
+            hostname.endsWith('.internal');
+
+        if (isInternal || (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:')) {
+            return res.status(403).send('Forbidden: Invalid or internal URL');
+        }
+
+        const response = await axios({
+            url: imageUrl,
+            method: 'GET',
+            responseType: 'stream',
+            timeout: 5000 // 5 second timeout
+        });
+
+        // Forward content type
+        res.set('Content-Type', response.headers['content-type']);
+        response.data.pipe(res);
+        
+    } catch (error) {
+        res.status(500).send('Error fetching image');
     }
 });
 

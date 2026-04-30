@@ -18,9 +18,14 @@ router.post('/suggest-tasks', authorize('admin', 'leader'), async (req, res) => 
     try {
         const prompt = `You are a professional project manager. 
         Given the project title: "${title}" and description: "${description}", 
-        suggest 5-7 core tasks to complete this project. 
-        Return ONLY a JSON array of strings. No extra text.
-        Example format: ["Task 1", "Task 2"]`;
+        generate a list of 5-10 actionable sub-tasks.
+        For each task, provide:
+        1. A clear "title"
+        2. A helpful "description" 
+        3. A suggested "priority" (must be "high", "medium", or "low")
+
+        Return ONLY a JSON object with a "tasks" key containing the array of objects.
+        Example: { "tasks": [{ "title": "Setup", "description": "...", "priority": "high" }] }`;
 
         const response = await axios.post(
             'https://api.groq.com/openai/v1/chat/completions',
@@ -39,27 +44,59 @@ router.post('/suggest-tasks', authorize('admin', 'leader'), async (req, res) => 
         );
 
         const aiContent = response.data.choices[0].message.content;
-        // Parse the response if it's a string, or send as is
-        const tasks = JSON.parse(aiContent);
+        const result = JSON.parse(aiContent);
         
-        // Handle both object { tasks: [] } and direct array [] formats
-        const result = Array.isArray(tasks) ? tasks : (tasks.tasks || []);
-        
-        res.json(result);
+        res.json(result.tasks || []);
     } catch (error) {
-        console.error('AI Error:', error.response?.data || error.message);
+        console.error('AI Suggest Error:', error.response?.data || error.message);
         res.status(500).json({ message: 'Failed to generate AI suggestions' });
     }
 });
-// @desc    General AI Chat (Improve writing)
-// @route   POST /api/ai/chat
-router.post('/chat', protect, async (req, res) => {
-    const { prompt } = req.body;
+
+// @desc    Improve task title and description
+// @route   POST /api/ai/improve-task
+router.post('/improve-task', protect, async (req, res) => {
+    const { title, description } = req.body;
 
     if (!process.env.GROQ_API_KEY) {
         return res.status(500).json({ message: 'Groq API Key not configured' });
     }
 
+    try {
+        const prompt = `You are a professional writing assistant. 
+        Improve the following task to make it sound professional and clear.
+        Title: "${title}"
+        Description: "${description}"
+        
+        Return ONLY a JSON object with "title" and "description" keys.
+        Do not change the core meaning, just improve the clarity and tone.`;
+
+        const response = await axios.post(
+            'https://api.groq.com/openai/v1/chat/completions',
+            {
+                model: 'llama-3.1-8b-instant',
+                messages: [{ role: 'user', content: prompt }],
+                response_format: { type: 'json_object' }
+            },
+            {
+                headers: {
+                    'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
+                    'Content-Type': 'application/json'
+                }
+            }
+        );
+
+        res.json(JSON.parse(response.data.choices[0].message.content));
+    } catch (error) {
+        console.error('AI Improve Error:', error.response?.data || error.message);
+        res.status(500).json({ message: 'AI failed to improve task' });
+    }
+});
+
+// @desc    General AI Chat (Cleanup)
+router.post('/chat', protect, async (req, res) => {
+    // ... rest of the existing code if needed, but we'll keep it simple for now
+    const { prompt } = req.body;
     try {
         const response = await axios.post(
             'https://api.groq.com/openai/v1/chat/completions',
@@ -72,7 +109,6 @@ router.post('/chat', protect, async (req, res) => {
                 headers: { 'Authorization': `Bearer ${process.env.GROQ_API_KEY}` }
             }
         );
-
         res.json(JSON.parse(response.data.choices[0].message.content));
     } catch (error) {
         res.status(500).json({ message: 'AI Chat failed' });

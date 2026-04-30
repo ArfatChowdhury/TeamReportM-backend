@@ -36,22 +36,53 @@ router.get('/', async (req, res) => {
   }
 });
 
-// @desc    Create a task
-// @route   POST /api/tasks
-router.post('/', authorize('admin', 'leader'), async (req, res) => {
-  const { title, description, project, assignedTo, dueDate } = req.body;
+// @desc    Create multiple tasks (Bulk)
+// @route   POST /api/tasks/bulk
+router.post('/bulk', authorize('admin', 'leader'), async (req, res) => {
+  const { tasks } = req.body;
+
+  if (!Array.isArray(tasks) || tasks.length === 0) {
+    return res.status(400).json({ message: 'Invalid tasks data' });
+  }
 
   try {
-    const task = await Task.create({
-      title,
-      description,
-      project,
-      assignedTo,
+    const preparedTasks = tasks.map(task => ({
+      ...task,
       assignedBy: req.user._id,
-      dueDate
-    });
+      status: 'todo'
+    }));
 
-    res.status(201).json(task);
+    const createdTasks = await Task.insertMany(preparedTasks);
+    res.status(201).json(createdTasks);
+  } catch (error) {
+    console.error('Bulk Task Creation Error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// @desc    Create a task
+
+// @desc    Update task details
+// @route   PATCH /api/tasks/:id
+router.patch('/:id', authorize('admin', 'leader'), async (req, res) => {
+  const { title, description, assignedTo, dueDate, priority } = req.body;
+
+  try {
+    const task = await Task.findById(req.params.id);
+    if (!task) return res.status(404).json({ message: 'Task not found' });
+
+    if (task.isLocked) {
+      return res.status(403).json({ message: 'Locked tasks cannot be edited' });
+    }
+
+    if (title) task.title = title;
+    if (description) task.description = description;
+    if (assignedTo) task.assignedTo = assignedTo;
+    if (dueDate) task.dueDate = dueDate;
+    if (priority) task.priority = priority;
+
+    const updatedTask = await task.save();
+    res.json(updatedTask);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
