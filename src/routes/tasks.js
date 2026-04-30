@@ -16,7 +16,7 @@ router.get('/', async (req, res) => {
       // Leader sees tasks assigned to their members or themselves
       query = { 
         $or: [
-          { assignedTo: { $in: req.user.assignedMembers } },
+          { assignedTo: { $in: req.user.assignedMembers || [] } },
           { assignedTo: req.user._id },
           { assignedBy: req.user._id }
         ]
@@ -24,8 +24,11 @@ router.get('/', async (req, res) => {
     } else if (req.user.role === 'member') {
       query = { assignedTo: req.user._id };
     }
-    // Admin sees all
 
+    // Add project filter if provided
+    if (req.query.project) {
+        query.project = req.query.project;
+    }
     const tasks = await Task.find(query).populate('project assignedTo assignedBy');
     res.json(tasks);
   } catch (error) {

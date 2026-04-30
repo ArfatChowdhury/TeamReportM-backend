@@ -74,4 +74,45 @@ router.get('/daily', async (req, res) => {
     }
 });
 
+// @desc    Get dashboard summary (Today's recap)
+// @route   GET /api/reports/summary
+router.get('/summary', async (req, res) => {
+    try {
+        const startOfDay = new Date();
+        startOfDay.setHours(0, 0, 0, 0);
+        
+        const endOfDay = new Date();
+        endOfDay.setHours(23, 59, 59, 999);
+
+        // Find all tasks completed today
+        const completedTasks = await Task.find({
+            status: 'done',
+            completedAt: { $gte: startOfDay, $lte: endOfDay }
+        }).populate('project assignedTo');
+
+        const totalCompleted = completedTasks.length;
+        const totalMinutes = completedTasks.reduce((acc, task) => acc + (task.timeTracked || 0), 0);
+        
+        // Group by project
+        const projectSummary = {};
+        completedTasks.forEach(task => {
+            const pTitle = task.project?.title || 'Unknown';
+            projectSummary[pTitle] = (projectSummary[pTitle] || 0) + 1;
+        });
+
+        res.json({
+            totalCompleted,
+            totalMinutes,
+            projectSummary,
+            tasks: completedTasks.map(t => ({
+                title: t.title,
+                member: t.assignedTo?.name,
+                project: t.project?.title
+            }))
+        });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
 module.exports = router;

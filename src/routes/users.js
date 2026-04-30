@@ -1,24 +1,40 @@
 const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
-const admin = require('../config/firebase');
+const { admin } = require('../config/firebase');
 const { protect } = require('../middleware/auth');
 const { authorize } = require('../middleware/role');
 
-// All routes here are protected and require admin role
+// All routes here are protected
 router.use(protect);
-router.use(authorize('admin'));
 
-// @desc    Get all users
+// @desc    Get all users (Filtered by role)
 // @route   GET /api/users
 router.get('/', async (req, res) => {
   try {
-    const users = await User.find({}).populate('assignedLeader', 'name email');
+    let query = {};
+    
+    // If leader, only show members assigned to them
+    if (req.user.role === 'leader') {
+      query = { assignedLeader: req.user._id, role: 'member' };
+    } 
+    // If admin, show all (can also use filters from query params)
+    else if (req.user.role === 'admin') {
+      if (req.query.role) query.role = req.query.role;
+    } else {
+      return res.status(403).json({ message: 'Not authorized to view users' });
+    }
+
+    const users = await User.find(query).populate('assignedLeader', 'name email');
     res.json(users);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 });
+
+// Admin-only routes below
+router.use(authorize('admin'));
+
 
 // @desc    Create a new user
 // @route   POST /api/users
@@ -33,11 +49,17 @@ router.post('/', async (req, res) => {
     }
 
     // 1. Create user in Firebase Auth via Admin SDK
-    const firebaseUser = await admin.auth().createUser({
-      email,
-      password,
-      displayName: name,
-    });
+    let firebaseUser;
+    try {
+      firebaseUser = await admin.auth().createUser({
+        email,
+        password,
+        displayName: name,
+      });
+    } catch (fbError) {
+      console.error('Firebase Auth Error:', fbError);
+      return res.status(400).json({ message: `Firebase Error: ${fbError.message}` });
+    }
 
     // 2. Create user in MongoDB
     const user = await User.create({

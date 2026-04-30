@@ -13,13 +13,14 @@ router.get('/', async (req, res) => {
     let query = { isDeleted: false };
 
     if (req.user.role === 'leader') {
-      query.createdBy = req.user._id;
+      query.leader = req.user._id; // Filter by assigned leader
     } else if (req.user.role === 'member') {
       query.visibleTo = req.user._id;
     }
-    // Admin sees all not deleted
 
-    const projects = await Project.find(query).sort({ order: 1 });
+    const projects = await Project.find(query)
+      .populate('leader', 'name email')
+      .sort({ order: 1 });
     res.json(projects);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -29,12 +30,13 @@ router.get('/', async (req, res) => {
 // @desc    Create a project
 // @route   POST /api/projects
 router.post('/', authorize('admin', 'leader'), async (req, res) => {
-  const { title, description, visibleTo, order } = req.body;
+  const { title, description, leader, visibleTo, order } = req.body;
 
   try {
     const project = await Project.create({
       title,
       description,
+      leader: leader || req.user._id,
       createdBy: req.user._id,
       visibleTo: visibleTo || [],
       order: order || 0
@@ -63,6 +65,7 @@ router.put('/:id', authorize('admin', 'leader'), async (req, res) => {
 
     project.title = req.body.title || project.title;
     project.description = req.body.description || project.description;
+    project.leader = req.body.leader || project.leader;
     project.visibleTo = req.body.visibleTo || project.visibleTo;
     project.order = req.body.order !== undefined ? req.body.order : project.order;
 

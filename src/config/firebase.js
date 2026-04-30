@@ -9,15 +9,15 @@ const initializeFirebase = () => {
     
     if (serviceAccountPath && fs.existsSync(fullPath)) {
       const serviceAccount = require(fullPath);
-      admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount),
-        projectId: process.env.FIREBASE_PROJECT_ID
-      });
-      console.log('✅ Firebase Admin SDK Initialized');
+      if (admin.apps.length === 0) {
+        admin.initializeApp({
+          credential: admin.credential.cert(serviceAccount),
+          projectId: process.env.FIREBASE_PROJECT_ID
+        });
+        console.log('✅ Firebase Admin SDK Initialized');
+      }
     } else {
-      console.warn('⚠️ Firebase serviceAccountKey.json not found. Auth middleware may fail.');
-      // Initialize with default credentials if available, or just log warning
-      if (process.env.FIREBASE_PROJECT_ID) {
+      if (admin.apps.length === 0 && process.env.FIREBASE_PROJECT_ID) {
          admin.initializeApp({
            projectId: process.env.FIREBASE_PROJECT_ID
          });
