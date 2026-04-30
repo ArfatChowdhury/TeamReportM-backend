@@ -79,6 +79,10 @@ router.patch('/:id/status', async (req, res) => {
         return res.status(403).json({ message: 'Not authorized to update this task status' });
     }
 
+    if (task.isLocked) {
+        return res.status(403).json({ message: 'This task is locked and cannot be modified' });
+    }
+
     const prevStatus = task.status;
     task.status = status;
 
@@ -129,10 +133,10 @@ router.post('/:id/carryover', authorize('admin', 'leader'), async (req, res) => 
             originalTask: task._id,
             dueDate: task.dueDate
         });
-        
-        // Optionally lock or mark the old task? 
-        // Plan says: "original task LOCKED (status cannot change)"
-        // We'll just leave it as is for now or add a locked flag if needed.
+
+        // Mark original task as locked
+        task.isLocked = true;
+        await task.save();
         
         res.status(201).json(newTask);
     } catch (error) {

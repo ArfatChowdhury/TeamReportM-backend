@@ -3,10 +3,6 @@ const mongoose = require('mongoose');
 const User = require('../models/User');
 const Project = require('../models/Project');
 const Task = require('../models/Task');
-const Report = require('../models/Report');
-const { admin, initializeFirebase } = require('../config/firebase');
-
-initializeFirebase();
 
 const seedData = async () => {
   try {
@@ -17,68 +13,62 @@ const seedData = async () => {
     await User.deleteMany({});
     await Project.deleteMany({});
     await Task.deleteMany({});
-    await Report.deleteMany({});
 
     console.log('Cleared existing data.');
 
-    // Sample Users
-    const users = [
-      { name: 'Admin User', email: 'admin@teamreport.com', role: 'admin', firebaseUid: 'admin-uid-123' },
-      { name: 'Team Leader', email: 'leader@teamreport.com', role: 'leader', firebaseUid: 'leader-uid-456' },
-      { name: 'John Member', email: 'member@teamreport.com', role: 'member', firebaseUid: 'member-uid-789' },
-    ];
-
-    const createdUsers = await User.insertMany(users);
-    console.log('Users seeded.');
-
-    const adminUser = createdUsers[0];
-    const leaderUser = createdUsers[1];
-    const memberUser = createdUsers[2];
-
-    // Assign member to leader
-    leaderUser.assignedMembers.push(memberUser._id);
-    await leaderUser.save();
-    memberUser.assignedLeader = leaderUser._id;
-    await memberUser.save();
-
-    // Sample Project
-    const project = await Project.create({
-      title: 'Initial Project',
-      description: 'The first project in the system',
-      createdBy: adminUser._id,
-      visibleTo: [leaderUser._id, memberUser._id],
-      order: 1
+    // 1. Create Admin
+    const admin = await User.create({
+      name: 'Admin User',
+      email: 'admin@test.com',
+      password: 'password123',
+      role: 'admin',
+      firebaseUid: 'SEED_ADMIN'
     });
-    console.log('Project seeded.');
 
-    // Sample Tasks
-    const tasks = [
-      { 
-        title: 'Task 1', 
-        description: 'First task for member', 
-        project: project._id, 
-        assignedTo: memberUser._id, 
-        assignedBy: leaderUser._id, 
-        status: 'todo' 
-      },
-      { 
-        title: 'Task 2', 
-        description: 'Second task for member', 
-        project: project._id, 
-        assignedTo: memberUser._id, 
-        assignedBy: leaderUser._id, 
-        status: 'in-progress',
-        startedAt: new Date()
-      }
-    ];
+    // 2. Create Leader
+    const leader = await User.create({
+      name: 'Team Leader',
+      email: 'leader@test.com',
+      password: 'password123',
+      role: 'leader',
+      firebaseUid: 'SEED_LEADER'
+    });
 
-    await Task.insertMany(tasks);
-    console.log('Tasks seeded.');
+    // 3. Create Member
+    const member = await User.create({
+      name: 'Team Member',
+      email: 'member@test.com',
+      password: 'password123',
+      role: 'member',
+      firebaseUid: 'SEED_MEMBER'
+    });
 
-    console.log('✅ Seeding complete!');
+    console.log('Users created.');
+
+    // 4. Create a Sample Project
+    const project = await Project.create({
+      title: 'Hiring Assessment App',
+      description: 'Build a React Native app with AI integration.',
+      leader: leader._id,
+      createdBy: admin._id,
+      deadline: new Date('2026-05-01')
+    });
+
+    // 5. Create a Sample Task
+    await Task.create({
+      title: 'Complete UI Polish',
+      description: 'Add charts and professional styling.',
+      project: project._id,
+      assignedTo: member._id,
+      assignedBy: leader._id,
+      priority: 'high',
+      dueDate: new Date('2026-04-30')
+    });
+
+    console.log('Seed data created successfully!');
     process.exit();
   } catch (error) {
-    console.error(`❌ Seeding failed: ${error.message}`);
+    console.error('Seeding error:', error);
     process.exit(1);
   }
 };

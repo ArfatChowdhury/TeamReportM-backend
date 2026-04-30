@@ -45,6 +45,10 @@ const taskSchema = new mongoose.Schema({
     type: Boolean, 
     default: false 
   },
+  isLocked: {
+    type: Boolean,
+    default: false
+  },
   originalTask: { 
     type: mongoose.Schema.Types.ObjectId, 
     ref: 'Task', 

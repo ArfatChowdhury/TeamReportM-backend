@@ -77,19 +77,20 @@ router.put('/:id', authorize('admin', 'leader'), async (req, res) => {
   }
 });
 
-// @desc    Soft delete project
+// @desc    Delete a project
 // @route   DELETE /api/projects/:id
-router.delete('/:id', authorize('admin'), async (req, res) => {
+router.delete('/:id', authorize('admin', 'leader'), async (req, res) => {
   try {
     const project = await Project.findById(req.params.id);
+    if (!project) return res.status(404).json({ message: 'Project not found' });
 
-    if (project) {
-      project.isDeleted = true;
-      await project.save();
-      res.json({ message: 'Project removed (soft delete)' });
-    } else {
-      res.status(404).json({ message: 'Project not found' });
-    }
+    // Cascade Delete: Remove all tasks associated with this project
+    await Task.deleteMany({ project: req.params.id });
+    
+    // Hard delete
+    await Project.findByIdAndDelete(req.params.id);
+
+    res.json({ message: 'Project and all associated tasks removed' });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
