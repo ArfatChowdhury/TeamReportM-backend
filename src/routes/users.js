@@ -32,9 +32,14 @@ router.get('/', async (req, res) => {
   }
 });
 
+// @desc    Get current user profile
+// @route   GET /api/users/profile
+router.get('/profile', async (req, res) => {
+  res.json(req.user);
+});
+
 // Admin-only routes below
 router.use(authorize('admin'));
-
 
 // @desc    Create a new user
 // @route   POST /api/users

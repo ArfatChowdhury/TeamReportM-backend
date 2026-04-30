@@ -30,7 +30,7 @@ router.get('/', async (req, res) => {
 // @desc    Create a project
 // @route   POST /api/projects
 router.post('/', authorize('admin', 'leader'), async (req, res) => {
-  const { title, description, leader, visibleTo, order } = req.body;
+  const { title, description, leader, visibleTo, order, deadline } = req.body;
 
   try {
     const project = await Project.create({
@@ -39,7 +39,8 @@ router.post('/', authorize('admin', 'leader'), async (req, res) => {
       leader: leader || req.user._id,
       createdBy: req.user._id,
       visibleTo: visibleTo || [],
-      order: order || 0
+      order: order || 0,
+      deadline
     });
 
     res.status(201).json(project);
