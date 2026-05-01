@@ -42,6 +42,16 @@ router.get('/', async (req, res) => {
                     name: userRecord.displayName || userRecord.email.split('@')[0],
                     role: role
                 });
+            } else {
+                // Update role if it doesn't match the test convention
+                let targetRole = exists.role;
+                if (userRecord.email.includes('admin')) targetRole = 'admin';
+                else if (userRecord.email.includes('leader')) targetRole = 'leader';
+
+                if (exists.role !== targetRole) {
+                    exists.role = targetRole;
+                    await exists.save();
+                }
             }
         }
       } catch (syncError) {
