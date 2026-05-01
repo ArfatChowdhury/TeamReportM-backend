@@ -48,7 +48,17 @@ router.get('/', async (req, res) => {
         query.project = req.query.project;
     }
     const tasks = await Task.find(query).populate('project assignedTo assignedBy');
-    res.json(tasks);
+    
+    // Filter out orphaned tasks (where project was deleted but task wasn't)
+    const validTasks = tasks.filter(task => task.project != null);
+
+    // Asynchronously clean up orphaned tasks to fix the database
+    const orphanedTaskIds = tasks.filter(task => task.project == null).map(t => t._id);
+    if (orphanedTaskIds.length > 0) {
+      Task.deleteMany({ _id: { $in: orphanedTaskIds } }).catch(console.error);
+    }
+
+    res.json(validTasks);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
