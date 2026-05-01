@@ -1,36 +1,87 @@
-# Top Team Manager - Backend 🌐
+# 🛠️ Team Report Manager (Backend API)
 
-The robust server-side engine powering the Top Team Manager platform. Built for scalability on Vercel with MongoDB Atlas and Firebase integration.
+The robust, role-enforced REST API powering the Top Team Manager platform. Built with Node.js, Express, and MongoDB, with deep integration for Firebase Auth and Groq AI.
 
-## 🚀 Key Modules
+## 🚀 Live API URL
+`https://team-report-m-backend.vercel.app/api`
 
-- **AI Engine**: Integrated with Groq (Llama 3.1) for task suggestion and text improvement.
-- **Auto-Sync Auth**: Custom middleware that automatically synchronizes Firebase Auth users into MongoDB profiles.
-- **Reporting System**: Real-time aggregation of task progress and team productivity metrics.
-- **Bulk Operations**: High-performance endpoints for multi-task project initialization.
+---
 
-## 🛠️ Stack
+## 🔐 Key API Features
 
-- **Runtime**: Node.js 18+
-- **Framework**: Express 5.x
-- **Database**: MongoDB (Mongoose)
-- **Auth**: Firebase Admin SDK
-- **Deployment**: Vercel
+### 🛡️ Role-Based Access Control (RBAC)
+- **Strict Authorization:** Middleware enforces access levels for `Admin`, `Leader`, and `Member`.
+- **Firebase Sync:** Automatically provisions MongoDB profiles for Firebase users on first login.
+- **Cross-Role Visibility:** Leaders manage their team members, while Admins oversee the entire organization.
 
-## ⚙️ Configuration
+### 🤖 AI Engine (Groq + Llama 3.1)
+- **Bulk Task Generation:** Endpoint to transform free-text project descriptions into structured JSON task lists.
+- **Executive Summaries:** Generates professional project overviews for email reports.
+- **Content Improvement:** Intelligent refinement of task metadata.
 
-Set the following variables in your `.env` or Vercel Environment:
-- `MONGO_URI`: MongoDB connection string.
-- `GROQ_API_KEY`: API key for Groq Cloud.
-- `JWT_SECRET`: Secret key for session management.
-- `serviceAccountKey.json`: Firebase Admin credentials.
+### ✉️ Email Reporting (SMTP)
+- **HTML Templating:** Professional project report layouts with task tables.
+- **SSRF Protection:** Proxy system for safely embedding external images in emails.
 
-## 📦 Deployment
+---
 
-This backend is pre-configured for Vercel. 
-```bash
-vercel --prod
+## 🛠️ Tech Stack
+- **Runtime:** Node.js (Express)
+- **Database:** MongoDB (Mongoose)
+- **Auth:** Firebase Admin SDK
+- **AI:** Groq SDK (Llama 3.1 8B Instant)
+- **Email:** Nodemailer (SMTP)
+- **Deployment:** Vercel (Serverless Functions)
+
+---
+
+## ⚙️ Environment Variables
+To run the backend locally or deploy it, you must configure the following `.env` variables:
+
+```env
+# Database
+MONGO_URI=your_mongodb_connection_string
+
+# AI
+GROQ_API_KEY=your_groq_api_key
+
+# Firebase Admin SDK (Private Key JSON)
+FIREBASE_PROJECT_ID=...
+FIREBASE_PRIVATE_KEY=...
+FIREBASE_CLIENT_EMAIL=...
+
+# SMTP Configuration (For Email Reports)
+SMTP_HOST=...
+SMTP_PORT=587
+SMTP_USER=...
+SMTP_PASS=...
 ```
 
 ---
-© 2026 Arfat Chowdhury
+
+## 🏗️ Local Development
+
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/ArfatChowdhury/TeamReportM-backend.git
+   cd TeamReportM-backend
+   ```
+
+2. **Install dependencies:**
+   ```bash
+   npm install
+   ```
+
+3. **Start the server:**
+   ```bash
+   npm run dev
+   ```
+
+---
+
+## 📁 Repository Links
+- **Frontend:** [https://github.com/ArfatChowdhury/Team-Report-Manager](https://github.com/ArfatChowdhury/Team-Report-Manager)
+- **Backend:** [https://github.com/ArfatChowdhury/TeamReportM-backend](https://github.com/ArfatChowdhury/TeamReportM-backend)
+
+---
+**Developed by Arfat Chowdhury**
