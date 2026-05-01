@@ -91,20 +91,28 @@ router.get('/summary', async (req, res) => {
             completedAt: { $gte: startOfDay, $lte: endOfDay }
         }).populate('project assignedTo');
 
-        const totalCompleted = completedTasks.length;
-        const totalMinutes = completedTasks.reduce((acc, task) => acc + (task.timeTracked || 0), 0);
-        
-        // Group by project
-        const projectSummary = {};
-        completedTasks.forEach(task => {
-            const pTitle = task.project?.title || 'Unknown';
-            projectSummary[pTitle] = (projectSummary[pTitle] || 0) + 1;
+        // Get total counts for the dashboard stats
+        const totalTasks = await Task.countDocuments();
+        const totalPending = await Task.countDocuments({ status: { $ne: 'done' } });
+        const highPriorityCount = await Task.countDocuments({ priority: 'high', status: { $ne: 'done' } });
+
+        // Get overdue projects count
+        const Project = require('../models/Project');
+        const now = new Date();
+        const overdueProjects = await Project.countDocuments({
+            deadline: { $lt: now }
         });
 
+        const totalCompletedToday = completedTasks.length;
+        const totalMinutes = completedTasks.reduce((acc, task) => acc + (task.timeTracked || 0), 0);
+        
         res.json({
-            totalCompleted,
+            totalTasks,
+            totalPending,
+            highPriorityCount,
+            overdueProjects,
+            totalCompletedToday,
             totalMinutes,
-            projectSummary,
             tasks: completedTasks.map(t => ({
                 title: t.title,
                 member: t.assignedTo?.name,

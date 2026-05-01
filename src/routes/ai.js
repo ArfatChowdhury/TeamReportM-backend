@@ -9,7 +9,7 @@ router.use(protect);
 // @desc    Suggest tasks for a project using AI (Groq)
 // @route   POST /api/ai/suggest-tasks
 router.post('/suggest-tasks', authorize('admin', 'leader'), async (req, res) => {
-    const { title, description } = req.body;
+    const { title, description, deadline } = req.body;
 
     if (!process.env.GROQ_API_KEY) {
         return res.status(500).json({ message: 'Groq API Key not configured' });
@@ -17,15 +17,16 @@ router.post('/suggest-tasks', authorize('admin', 'leader'), async (req, res) => 
 
     try {
         const prompt = `You are a professional project manager. 
-        Given the project title: "${title}" and description: "${description}", 
+        Given the project title: "${title}", description: "${description}", and deadline: "${deadline || 'No strict deadline'}", 
         generate a list of 5-10 actionable sub-tasks.
         For each task, provide:
         1. A clear "title"
         2. A helpful "description" 
         3. A suggested "priority" (must be "high", "medium", or "low")
+        4. A realistic "allocatedMinutes" as an integer (e.g., 360 for 6 hours, 2880 for 2 days), ensuring all tasks can realistically be completed before the project deadline.
 
         Return ONLY a JSON object with a "tasks" key containing the array of objects.
-        Example: { "tasks": [{ "title": "Setup", "description": "...", "priority": "high" }] }`;
+        Example: { "tasks": [{ "title": "Setup", "description": "...", "priority": "high", "allocatedMinutes": 360 }] }`;
 
         const response = await axios.post(
             'https://api.groq.com/openai/v1/chat/completions',

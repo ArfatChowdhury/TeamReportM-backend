@@ -1,8 +1,26 @@
 const express = require('express');
 const router = express.Router();
 const Task = require('../models/Task');
+const User = require('../models/User');
+const { admin } = require('../config/firebase');
 const { protect } = require('../middleware/auth');
 const { authorize } = require('../middleware/role');
+
+const sendNotification = async (userId, title, body) => {
+    try {
+        const user = await User.findById(userId);
+        if (user && user.fcmToken) {
+            await admin.messaging().send({
+                token: user.fcmToken,
+                notification: { title, body },
+                android: { priority: 'high' }
+            });
+            console.log('✅ Notification sent to:', user.name);
+        }
+    } catch (err) {
+        console.error('❌ FCM Error:', err.message);
+    }
+};
 
 router.use(protect);
 
@@ -68,6 +86,11 @@ router.post('/', authorize('admin', 'leader'), async (req, res) => {
       ...req.body,
       assignedBy: req.user._id
     });
+    
+    if (req.body.assignedTo) {
+        sendNotification(req.body.assignedTo, 'New Task Assigned 📋', `Task: ${task.title}`);
+    }
+
     res.status(201).json(task);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -87,6 +110,8 @@ router.patch('/:id', authorize('admin', 'leader'), async (req, res) => {
       return res.status(403).json({ message: 'Locked tasks cannot be edited' });
     }
 
+    const oldAssignee = task.assignedTo?.toString();
+
     if (title) task.title = title;
     if (description) task.description = description;
     if (assignedTo) task.assignedTo = assignedTo;
@@ -94,6 +119,12 @@ router.patch('/:id', authorize('admin', 'leader'), async (req, res) => {
     if (priority) task.priority = priority;
 
     const updatedTask = await task.save();
+
+    // Notify if assignedTo changed or added
+    if (assignedTo && assignedTo.toString() !== oldAssignee) {
+        sendNotification(assignedTo, 'New Task Assigned 📋', `Task: ${updatedTask.title}`);
+    }
+
     res.json(updatedTask);
   } catch (error) {
     res.status(500).json({ message: error.message });

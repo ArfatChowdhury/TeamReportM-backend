@@ -41,6 +41,10 @@ const taskSchema = new mongoose.Schema({
     type: Number, 
     default: 0 // In minutes
   },
+  allocatedMinutes: {
+    type: Number,
+    default: 0
+  },
   isCarryOver: { 
     type: Boolean, 
     default: false 

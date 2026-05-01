@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
+const Task = require('../models/Task');
 const { admin } = require('../config/firebase');
 const { protect } = require('../middleware/auth');
 const { authorize } = require('../middleware/role');
@@ -26,7 +27,14 @@ router.get('/', async (req, res) => {
     }
 
     const users = await User.find(query).populate('assignedLeader', 'name email');
-    res.json(users);
+    
+    // Add workload info (active task count)
+    const usersWithWorkload = await Promise.all(users.map(async (u) => {
+        const activeTasks = await Task.countDocuments({ assignedTo: u._id, status: { $ne: 'done' } });
+        return { ...u.toObject(), activeTasks };
+    }));
+
+    res.json(usersWithWorkload);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
