@@ -61,6 +61,18 @@ router.post('/bulk', authorize('admin', 'leader'), async (req, res) => {
 });
 
 // @desc    Create a task
+// @route   POST /api/tasks
+router.post('/', authorize('admin', 'leader'), async (req, res) => {
+  try {
+    const task = await Task.create({
+      ...req.body,
+      assignedBy: req.user._id
+    });
+    res.status(201).json(task);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
 
 // @desc    Update task details
 // @route   PATCH /api/tasks/:id
