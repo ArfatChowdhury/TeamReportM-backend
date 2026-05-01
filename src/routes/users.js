@@ -17,36 +17,29 @@ router.get('/', async (req, res) => {
   try {
     let query = {};
     
-    // If leader, only show members assigned to them
-    if (req.user.role === 'leader') {
-      query = { assignedLeader: req.user._id, role: 'member' };
-    } 
-    // If admin, show all (can also use filters from query params)
-    else if (req.user.role === 'admin') {
-      if (req.query.role) query.role = req.query.role;
-      
-      // AUTO-SYNC: Sync users from Firebase to MongoDB if we are an admin
-      // This ensures manual Firebase users show up in the lists
+    // AUTO-SYNC: Sync users from Firebase to MongoDB for Admin/Leader
+    // This ensures manual Firebase users show up in the lists immediately
+    if (req.user.role === 'admin' || req.user.role === 'leader') {
       try {
         const listUsersResult = await admin.auth().listUsers();
         for (const userRecord of listUsersResult.users) {
             const exists = await User.findOne({ $or: [{ firebaseUid: userRecord.uid }, { email: userRecord.email }] });
             if (!exists) {
                 let role = 'member';
-                if (userRecord.email.includes('admin')) role = 'admin';
-                else if (userRecord.email.includes('leader')) role = 'leader';
+                if (userRecord.email.toLowerCase().includes('admin')) role = 'admin';
+                else if (userRecord.email.toLowerCase().includes('leader')) role = 'leader';
 
                 await User.create({
                     firebaseUid: userRecord.uid,
-                    email: userRecord.email,
+                    email: userRecord.email.toLowerCase(),
                     name: userRecord.displayName || userRecord.email.split('@')[0],
                     role: role
                 });
             } else {
                 // Update role if it doesn't match the test convention
                 let targetRole = exists.role;
-                if (userRecord.email.includes('admin')) targetRole = 'admin';
-                else if (userRecord.email.includes('leader')) targetRole = 'leader';
+                if (userRecord.email.toLowerCase().includes('admin')) targetRole = 'admin';
+                else if (userRecord.email.toLowerCase().includes('leader')) targetRole = 'leader';
 
                 if (exists.role !== targetRole) {
                     exists.role = targetRole;
@@ -57,6 +50,15 @@ router.get('/', async (req, res) => {
       } catch (syncError) {
         console.error('User Sync Error:', syncError);
       }
+    }
+
+    // If leader, show members (relaxing restriction for demo)
+    if (req.user.role === 'leader') {
+      query = { role: 'member' };
+    } 
+    // If admin, show all (can also use filters from query params)
+    else if (req.user.role === 'admin') {
+      if (req.query.role) query.role = req.query.role;
     } else {
       return res.status(403).json({ message: 'Not authorized to view users' });
     }
