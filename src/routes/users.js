@@ -24,6 +24,29 @@ router.get('/', async (req, res) => {
     // If admin, show all (can also use filters from query params)
     else if (req.user.role === 'admin') {
       if (req.query.role) query.role = req.query.role;
+      
+      // AUTO-SYNC: Sync users from Firebase to MongoDB if we are an admin
+      // This ensures manual Firebase users show up in the lists
+      try {
+        const listUsersResult = await admin.auth().listUsers();
+        for (const userRecord of listUsersResult.users) {
+            const exists = await User.findOne({ $or: [{ firebaseUid: userRecord.uid }, { email: userRecord.email }] });
+            if (!exists) {
+                let role = 'member';
+                if (userRecord.email.includes('admin')) role = 'admin';
+                else if (userRecord.email.includes('leader')) role = 'leader';
+
+                await User.create({
+                    firebaseUid: userRecord.uid,
+                    email: userRecord.email,
+                    name: userRecord.displayName || userRecord.email.split('@')[0],
+                    role: role
+                });
+            }
+        }
+      } catch (syncError) {
+        console.error('User Sync Error:', syncError);
+      }
     } else {
       return res.status(403).json({ message: 'Not authorized to view users' });
     }
