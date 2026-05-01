@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 const Task = require('../models/Task');
+const Project = require('../models/Project');
+const Report = require('../models/Report');
 const { admin } = require('../config/firebase');
 const { protect } = require('../middleware/auth');
 const { authorize } = require('../middleware/role');
@@ -190,6 +192,36 @@ router.post('/:id/assign', async (req, res) => {
         
         res.json({ message: 'Member assigned to leader successfully' });
     } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
+// @desc    Wipeout all data (Tasks, Projects, Reports, non-admin Users)
+// @route   POST /api/users/wipeout
+router.post('/wipeout', async (req, res) => {
+    try {
+        console.log('🚀 WIPE OUT INITIATED BY:', req.user.email);
+        
+        // 1. Delete all Tasks
+        await Task.deleteMany({});
+        
+        // 2. Delete all Projects
+        await Project.deleteMany({});
+        
+        // 3. Delete all Reports
+        await Report.deleteMany({});
+        
+        // 4. Delete all non-admin Users from MongoDB
+        // We keep the admins so they can still log in
+        await User.deleteMany({ role: { $ne: 'admin' } });
+
+        // Note: We don't delete from Firebase Auth here to avoid orphan accounts 
+        // if some non-admin users were created there but not in DB, 
+        // but for a "wipeout" for testing, this should be enough to clear the UI.
+
+        res.json({ message: 'System wiped successfully. All tasks, projects, and members have been removed.' });
+    } catch (error) {
+        console.error('Wipeout Error:', error);
         res.status(500).json({ message: error.message });
     }
 });
