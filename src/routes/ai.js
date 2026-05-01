@@ -31,7 +31,7 @@ router.post('/suggest-tasks', authorize('admin', 'leader'), async (req, res) => 
         const response = await axios.post(
             'https://api.groq.com/openai/v1/chat/completions',
             {
-                model: 'llama-3.3-70b-versatile',
+                model: 'llama-3.1-8b-instant',
                 messages: [{ role: 'user', content: prompt }],
                 temperature: 0.7,
                 response_format: { type: 'json_object' }
@@ -44,9 +44,16 @@ router.post('/suggest-tasks', authorize('admin', 'leader'), async (req, res) => 
             }
         );
 
-        const aiContent = response.data.choices[0].message.content;
-        const result = JSON.parse(aiContent);
+        let aiContent = response.data.choices[0].message.content;
         
+        // Clean up markdown if present
+        if (aiContent.includes('```json')) {
+            aiContent = aiContent.split('```json')[1].split('```')[0];
+        } else if (aiContent.includes('```')) {
+            aiContent = aiContent.split('```')[1].split('```')[0];
+        }
+
+        const result = JSON.parse(aiContent.trim());
         res.json(result.tasks || []);
     } catch (error) {
         console.error('AI Suggest Error:', error.response?.data || error.message);
