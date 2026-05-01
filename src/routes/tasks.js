@@ -128,14 +128,15 @@ router.patch('/:id', authorize('admin', 'leader'), async (req, res) => {
     if (dueDate) task.dueDate = dueDate;
     if (priority) task.priority = priority;
 
-    const updatedTask = await task.save();
+    await task.save();
+    const populatedTask = await Task.findById(task._id).populate('project assignedTo assignedBy');
 
     // Notify if assignedTo changed or added
     if (assignedTo && assignedTo.toString() !== oldAssignee) {
-        sendNotification(assignedTo, 'New Task Assigned 📋', `Task: ${updatedTask.title}`);
+        sendNotification(assignedTo, 'New Task Assigned 📋', `Task: ${populatedTask.title}`);
     }
 
-    res.json(updatedTask);
+    res.json(populatedTask);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -185,8 +186,9 @@ router.patch('/:id/status', async (req, res) => {
         // Just set status to pause
     }
 
-    const updatedTask = await task.save();
-    res.json(updatedTask);
+    await task.save();
+    const populatedTask = await Task.findById(task._id).populate('project assignedTo assignedBy');
+    res.json(populatedTask);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
