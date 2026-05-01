@@ -42,9 +42,15 @@ const syncAdmin = async () => {
         user.firebaseUid = userRecord.uid; // Update UID if it was missing
       }
       
-      // Make admin@a.com an admin
-      if (user.email === 'admin@a.com') {
+      // Role Logic: Prioritize test accounts
+      if (userRecord.email === 'admin@test.com' || userRecord.email === 'admin@a.com') {
         user.role = 'admin';
+      } else if (userRecord.email === 'leader@test.com') {
+        user.role = 'leader';
+      } else if (userRecord.email === 'member@test.com') {
+        user.role = 'member';
+      } else if (!user.role) {
+        user.role = 'member';
       }
       
       await user.save();

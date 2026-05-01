@@ -15,7 +15,20 @@ const protect = async (req, res, next) => {
       let user = await User.findOne({ firebaseUid: decodedToken.uid });
 
       if (!user) {
-        return res.status(401).json({ message: 'User not found in database' });
+        // AUTO-SYNC: If user exists in Firebase but not in DB (e.g. manual creation)
+        console.log('🔄 User not found in DB. Auto-syncing from Firebase...');
+        
+        let role = 'member';
+        const email = decodedToken.email || '';
+        if (email.includes('admin')) role = 'admin';
+        else if (email.includes('leader')) role = 'leader';
+
+        user = await User.create({
+          firebaseUid: decodedToken.uid,
+          email: email,
+          name: decodedToken.name || email.split('@')[0],
+          role: role
+        });
       }
 
       req.user = user;
